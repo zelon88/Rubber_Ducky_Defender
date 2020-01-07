@@ -1,0 +1,23 @@
+--------------------
+COMMIT - 1/6/2019
+v1.1 - Switch from Devcon to shutdown.
+
+-v1.1.
+-Devcon isn't going to work.
+-Add possibility to confirm attached device is or is not a keyboard.
+-Improve performance.
+-Switch from trying to detect individual devices and disabling them with Devcon to either simple logging/notifications or shutting down the entire machine.
+-Devcon won't work because some HID Keyboard Device drivers are not "disable-able" in the first place, there are too many different versions of DevCon, the documentation is poor, and the licensing is vague and ambigious.
+-Add documentation.
+-There are still going to be bugs. Loops could be cleaned up more and the timing needs to be perfected to avoid multiple detections.
+--------------------
+
+--------------------
+COMMIT - 1/3/2019
+v1.0 - Initial Commit
+
+-v1.0.
+-Initial commit.
+-Modified "Workstation_USB_Monitor".
+-Try working with devcon. See if it can disable HID Keyboard Devices.
+--------------------

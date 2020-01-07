@@ -1,31 +1,34 @@
 'File Name: Rubber_Ducky_Defender.vbs
-'Version: v1.0, 1/3/2020
+'Version: v1.1, 1/6/2020
 'Author: Justin Grimes, 1/3/2020
 
 '-------------------------------------------------- 
 'Specify which global variables will be used in this script.
 Option Explicit
 Dim strComputer, objWMIService, objNet, objFSO, colMonitoredEvents, objShell, wmiServices, query, return1, return2, objLatestEvent, _
- param1, param2, param3, param4, param5, usbOnly, silentOnly, arg, userName, hostName, mailFile, mFile, mailData, strComputerName, _
+ param1, param2, param3, param4, param5, usbOnly, arg, userName, hostName, mailFile, mFile, mailData, strComputerName, _
  resultCounter, strSafeDate, strSafeTime, strDateTime, strLogFilePath, strLogFileName, returnData, objLogFile, emailDisable, _
  logDisable, guiDisable, strSafeTimeRAW, strSafeTimeDIFF, strSafeTimeLAST, disableThreats, query2, objDevice, colDevices, _
- strDeviceName, strDeviceNames, colDevice, DevCaption, DevID, DevInstallDate, appPath, company, companyAbbreviation, _
- fromEmail, toEmail, sendmailPath, logPath, arrDeviceNames, colUSBDevice, colUSBDevices, detected
+ strDeviceName, strDeviceNames, colDevice, DevCaption, DevID, DevInstallDate, appPath, company, companyAbbreviation, detectionArray, _
+ fromEmail, toEmail, sendmailPath, logPath, arrDeviceNames, colUSBDevice, colUSBDevices, detected, mArray, mValue, mValEl, appName, _
+ warnOnThreat, confirmationBox, warnFlag, killFlag
 '-------------------------------------------------- 
 
 ' ----------
 ' SET THESE VARIABLES TO YOUR ENVIRONMENT!!!
 company = "Company Inc."
 companyAbbreviation = "Company"
-fromEmail = "Server@Company.com"
-toEmail = "IT@Company.com"
+fromEmail = "Server@company.com"
+toEmail = "IT@company.com"
 sendmailPath = "sendmail.exe"
 logPath = "\\server\Logs"
-silentOnly = FALSE
 emailDisable = FALSE
 logDisable = FALSE
 guiDisable = FALSE
 disableThreats = TRUE
+warnOnThreat = TRUE
+appPath = "\\server\scripts\Rubber_Ducky_Defender"
+appName = "Rubber_Ducky_Defender"
 ' ---------- 
 
 '-------------------------------------------------- 
@@ -38,6 +41,9 @@ strSafeTimeRAW = 0
 strSafeTimeDIFF = 0
 strSafeTimeLAST = 0
 detected = FALSE
+killFlag = FALSE
+confirmationBox = FALSE
+detectionArray = Array()
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2") 
 Set colMonitoredEvents = objWMIService.ExecNotificationQuery("SELECT * FROM __InstanceCreationEvent WITHIN 10 WHERE Targetinstance " & _ 
@@ -117,22 +123,6 @@ End If
 If (param5 = "-g" Or param4 = "--gui") Then
   guiDisable = TRUE
 End If
-'If the -s or --silent arguments are set we disable all echo's within the script.
-If (param1 = "-s" Or param1 = "--silent") Then
-  silentOnly = TRUE
-End If
-If (param2 = "-s" Or param2 = "--silent") Then
-  silentOnly = TRUE
-End If
-If (param3 = "-s" Or param3 = "--silent") Then
-  silentOnly = TRUE
-End If
-If (param4 = "-s" Or param4 = "--silent") Then
-  silentOnly = TRUE
-End If
-If (param5 = "-s" Or param5 = "--silent") Then
-  silentOnly = TRUE
-End If
 '--------------------------------------------------
 
 '--------------------------------------------------
@@ -145,12 +135,11 @@ End Function
 '--------------------------------------------------
 'Perform the loop that checks for new devices.
 Do While TRUE
-  'On Error Resume Next
   Set objLatestEvent = colMonitoredEvents.NextEvent 
   If (resultCounter = 0) Then
     query = "Select * From Win32_USBControllerDevice"
     Set colDevices = objWMIService.ExecQuery(query)
-    'Loop through the list of returned devices to gain more information about
+    'Loop through the list of returned devices to gain more information about what was connected.
     For Each objDevice In colDevices
       strDeviceName = Replace(objDevice.Dependent, Chr(34), "")
       arrDeviceNames = Split(strDeviceName, "=")
@@ -160,7 +149,7 @@ Do While TRUE
         Set colUSBDevices = objWMIService.ExecQuery(query2)
         query2 = ""
         return1 = ""
-        'Build the return data
+        'Build the return data.
         For Each colUSBDevice In colUSBDevices
           DevCaption = colUSBDevice.Caption
           DevID = colUSBDevice.DeviceID
@@ -173,19 +162,37 @@ Do While TRUE
             vbNewLine & vbNewLine
             return2 = return1 & return2
             detected = TRUE
+            If (warnOnThreat = TRUE) Then
+              warnFlag = TRUE
+            End If
             If (disableThreats = TRUE) Then
-              'objShell.Run appPath & "\devcon.exe disable ""@" & DevID & ""
+              killFlag = TRUE
             End If
           End If
         Next 
       End If
     Next
   End IF
-  'Detection starts here and stops here when listening for more devices. (Be careful what goes near here).
+  strSafeTime = Right("0" & Hour(Now), 2) & Right("0" & Minute(Now), 2) & Right("0" & Second(Now), 2)
+  strSafeTimeRAW = strSafeTime
+  strSafeTimeDIFF = strSafeTime - strSafeTimeLAST
   returnData = Notify()
-  If (logDisable = FALSE) Then 
-    CreateLog(returnData)
-  End If
+  If (strSafeTimeDIFF > 30) Then
+    If (warnFlag = TRUE) Then
+      confirmationBox = MsgBox("The device you just plugged in reports that it is a USB Keyboard. Did you intend to plug in a keyboard?", 4, appName)
+    Else
+      confirmationBox = 7
+    End If
+    If (disableThreats = TRUE And killFlag = TRUE And confirmationBox = 7) Then
+      If (logDisable = FALSE) Then 
+        CreateLog(returnData)
+      End If
+      warnFlag = FALSE
+      killFlag = FALSE
+      killWorkstation()
+    End If
+  End If 
+  strSafeTimeLAST = strSafeTimeRAW
 Loop
 '--------------------------------------------------
 
@@ -213,19 +220,16 @@ function Notify()
      vbNewLine & vbNewLine & _
      "Script: ""Rubber_Ducky_Defender.vbs""" 
     mFile.Close
-    strSafeTime = Right("0" & Hour(Now), 2) & Right("0" & Minute(Now), 2) & Right("0" & Second(Now), 2)
-    strSafeTimeRAW = strSafeTime
-    strSafeTimeDIFF = strSafeTime - strSafeTimeLAST
-    If (emailDisable = FALSE And strSafeTimeDIFF > 6) Then
+    If (emailDisable = FALSE) Then
       SendEmail
     End If
-    'Display results if the silent argument is not set.
-    If (silentOnly = FALSE And guiDisable = FALSE And strSafeTimeDIFF > 6 And detected = TRUE) Then
+    'Display results.
+    If (guiDisable = FALSE And detected = TRUE) Then
       mailData = "Devices Detected: " & vbNewLine & vbNewLine & return2
-      MsgBox mailData, vbOKOnly, "Rubber_Ducky_Defender"
-      detected = FALSE
+      MsgBox mailData, vbOKOnly, appName
     End If
     'Reset the outputs for the next iteration of the loop above. (MUST BE DONE!!! This was the source of a lot of debugging.)
+    detected = FALSE
     Notify = return2
     return2 = ""
     return1 = ""
@@ -243,15 +247,18 @@ Function CreateLog(strEventInfo)
     strSafeTime = Right("0" & Hour(Now), 2) & Right("0" & Minute(Now), 2) & Right("0" & Second(Now), 2)
     strSafeTimeRAW = strSafeTime
     strSafeTimeDIFF = strSafeTime - strSafeTimeLAST
-    'Some machines with lower performance may create multiple logfiles in rapid succession. This check ensures logs aren't duplicated.
-    If (strSafeTimeDIFF > 6) Then
-      strDateTime = strSafeDate & "-" & strSafeTime
-      strLogFileName = strLogFilePath & "\" & userName & "-" & strDateTime & "-rubber_ducky_defender.txt"
-      Set objLogFile = objFSO.CreateTextFile(strLogFileName, TRUE, FALSE)
-      objLogFile.WriteLine(strEventInfo)
-      objLogFile.Close
-    End IF
-    strSafeTimeLAST = strSafeTimeRAW
+    strLogFileName = strLogFilePath & "\" & userName & "-" & strDateTime & "-rubber_ducky_defender.txt"
+    Set objLogFile = objFSO.CreateTextFile(strLogFileName, TRUE, FALSE)
+    objLogFile.WriteLine(strEventInfo)
+    objLogFile.Close
   End If
+End Function
+'--------------------------------------------------
+
+'--------------------------------------------------
+'A function shut down the machine when triggered.
+Function killWorkstation()
+  'oShell.Run "C:\Windows\System32\shutdown.exe /s /f /t 0", 0, FALSE
+  Msgbox "Uncomment the oShell.Run line in Rubber_Ducky_Defender.vbs to enable automatic shutdown upon detection!"
 End Function
 '--------------------------------------------------
