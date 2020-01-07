@@ -1,5 +1,5 @@
 'File Name: Rubber_Ducky_Defender.vbs
-'Version: v1.1, 1/6/2020
+'Version: v1.2, 1/7/2020
 'Author: Justin Grimes, 1/3/2020
 
 '-------------------------------------------------- 
@@ -16,18 +16,32 @@ Dim strComputer, objWMIService, objNet, objFSO, colMonitoredEvents, objShell, wm
 
 ' ----------
 ' SET THESE VARIABLES TO YOUR ENVIRONMENT!!!
+
+'The complete, unabbreviated name of your organization.
 company = "Company Inc."
+'The abbreviated name of your organization.
 companyAbbreviation = "Company"
+'The email address where notification emails will appear to have come from.
 fromEmail = "Server@company.com"
+'The email address where notification emails should be sent to.
 toEmail = "IT@company.com"
+'The full, absolute UNC path to the location where sendmail.exe is located.
 sendmailPath = "sendmail.exe"
+'The full, absolute UNC path to the location where logs can be stored.
 logPath = "\\server\Logs"
+'Set to TRUE to disable emails by default, regardless of command line arguments.
 emailDisable = FALSE
+'Set to TRUE to disable logging by default, regardless of command line arguments.
 logDisable = FALSE
+'Set to TRUE to disable the user interface (message boxes), regardless of command line arguments.
 guiDisable = FALSE
+'Set to TRUE to mitigate detections that are found. If set to FALSE only notifications will take place.
 disableThreats = TRUE
+'Set to true to fire a confirmation box upon detection asking the user to confirm their intention to connect a USB keyboard.
 warnOnThreat = TRUE
+'The full, absolute UNC path to the directory where this script is stored.
 appPath = "\\server\scripts\Rubber_Ducky_Defender"
+'The file name of this script. 
 appName = "Rubber_Ducky_Defender"
 ' ---------- 
 
@@ -75,52 +89,52 @@ End If
 If (arg.Count > 4) Then
   param5 = arg(4)
 End If
-'If the -e or --email arguments are set we disable the notification email.
-If (param1 = "-e" Or param1 = "--email") Then
+'If the -ne or --nemail arguments are set we disable the notification email.
+If (param1 = "-ne" Or param1 = "--nemail") Then
   emailDisable = TRUE
 End If
-If (param2 = "-e" Or param2 = "--email") Then
+If (param2 = "-ne" Or param2 = "--nemail") Then
   emailDisable = TRUE
 End If
-If (param3 = "-e" Or param3 = "--email") Then
+If (param3 = "-ne" Or param3 = "--nemail") Then
   emailDisable = TRUE
 End If
-If (param4 = "-e" Or param4 = "--email") Then
+If (param4 = "-ne" Or param4 = "--nemail") Then
   emailDisable = TRUE
 End If
-If (param5 = "-e" Or param5 = "--email") Then
+If (param5 = "-ne" Or param5 = "--nemail") Then
   emailDisable = TRUE
 End If
-'If the -l or --log arguments are set we disable the logfile.
-If (param1 = "-l" Or param1 = "--log") Then
+'If the -nl or --nlog arguments are set we disable the logfile.
+If (param1 = "-nl" Or param1 = "--nlog") Then
   logDisable = TRUE
 End If
-If (param2 = "-l" Or param2 = "--log") Then
+If (param2 = "-nl" Or param2 = "--nlog") Then
   logDisable = TRUE
 End If
-If (param3 = "-l" Or param3 = "--log") Then
+If (param3 = "-nl" Or param3 = "--nlog") Then
   logDisable = TRUE
 End If
-If (param4 = "-l" Or param4 = "--log") Then
+If (param4 = "-nl" Or param4 = "--nlog") Then
   logDisable = TRUE
 End If
-If (param5 = "-l" Or param5 = "--log") Then
+If (param5 = "-nl" Or param5 = "--nlog") Then
   logDisable = TRUE
 End If
-'If the -g or --gui arguments are set we disable the GUI.
-If (param1 = "-g" Or param1 = "--gui") Then
+'If the -ng or --ngui arguments are set we disable the GUI.
+If (param1 = "-ng" Or param1 = "--ngui") Then
   guiDisable = TRUE
 End If
-If (param2 = "-g" Or param2 = "--gui") Then
+If (param2 = "-ng" Or param2 = "--ngui") Then
   guiDisable = TRUE
 End If
-If (param3 = "-g" Or param3 = "--gui") Then
+If (param3 = "-ng" Or param3 = "--ngui") Then
   guiDisable = TRUE
 End If
-If (param4 = "-g" Or param4 = "--gui") Then
+If (param4 = "-ng" Or param4 = "--ngui") Then
   guiDisable = TRUE
 End If
-If (param5 = "-g" Or param4 = "--gui") Then
+If (param5 = "-ng" Or param4 = "--ngui") Then
   guiDisable = TRUE
 End If
 '--------------------------------------------------
@@ -139,17 +153,18 @@ Do While TRUE
   If (resultCounter = 0) Then
     query = "Select * From Win32_USBControllerDevice"
     Set colDevices = objWMIService.ExecQuery(query)
-    'Loop through the list of returned devices to gain more information about what was connected.
+    'Loop through the list of available USB controllers.
     For Each objDevice In colDevices
       strDeviceName = Replace(objDevice.Dependent, Chr(34), "")
       arrDeviceNames = Split(strDeviceName, "=")
       strDeviceName = arrDeviceNames(1)
+      'Drill into each USB controller and enumerate the devices attached to it.
       If InStr(" " & strDeviceName, "HID") Then
         query2 = "Select * From Win32_PnPEntity Where DeviceID = '" & strDeviceName & "'"
         Set colUSBDevices = objWMIService.ExecQuery(query2)
         query2 = ""
         return1 = ""
-        'Build the return data.
+        'Look for USB keyboards among the enumerated devices.
         For Each colUSBDevice In colUSBDevices
           DevCaption = colUSBDevice.Caption
           DevID = colUSBDevice.DeviceID
@@ -162,9 +177,11 @@ Do While TRUE
             vbNewLine & vbNewLine
             return2 = return1 & return2
             detected = TRUE
+            'Upon detection, set the "warnFlag" to fire the user confirmation box (if enabled).
             If (warnOnThreat = TRUE) Then
               warnFlag = TRUE
             End If
+            'Upon detection, set the "killFlag" to fire the killWorkstation() function (if enabled). 
             If (disableThreats = TRUE) Then
               killFlag = TRUE
             End If
@@ -173,12 +190,13 @@ Do While TRUE
       End If
     Next
   End IF
+  'Reset time variables detected on the last loop. Used to prevent erroneous double-detections.
   strSafeTime = Right("0" & Hour(Now), 2) & Right("0" & Minute(Now), 2) & Right("0" & Second(Now), 2)
   strSafeTimeRAW = strSafeTime
   strSafeTimeDIFF = strSafeTime - strSafeTimeLAST
   returnData = Notify()
   If (strSafeTimeDIFF > 30) Then
-    If (warnFlag = TRUE) Then
+    If (warnFlag = TRUE And guiDisable = FALSE) Then
       confirmationBox = MsgBox("The device you just plugged in reports that it is a USB Keyboard. Did you intend to plug in a keyboard?", 4, appName)
     Else
       confirmationBox = 7
@@ -218,7 +236,7 @@ function Notify()
      vbNewLine &vbNewLine & return2 & vbNewLine & _
      "This check was generated by " & strComputerName & " and is run in the background upon user logon." & _
      vbNewLine & vbNewLine & _
-     "Script: ""Rubber_Ducky_Defender.vbs""" 
+     "Script: """ & appName & ".vbs""" 
     mFile.Close
     If (emailDisable = FALSE) Then
       SendEmail
@@ -241,13 +259,13 @@ End Function
 'A function to create a log file.
 Function CreateLog(strEventInfo)
   If Not (strEventInfo = "") Then
-    'Logfile related variables are defined at log creation time for accurate time reporting.
+    'Logfile related time variables are defined at log creation time for accurate time reporting.
     strLogFilePath = logPath
     strSafeDate = DatePart("yyyy",Date) & Right("0" & DatePart("m",Date), 2) & Right("0" & DatePart("d",Date), 2)
     strSafeTime = Right("0" & Hour(Now), 2) & Right("0" & Minute(Now), 2) & Right("0" & Second(Now), 2)
     strSafeTimeRAW = strSafeTime
     strSafeTimeDIFF = strSafeTime - strSafeTimeLAST
-    strLogFileName = strLogFilePath & "\" & userName & "-" & strDateTime & "-rubber_ducky_defender.txt"
+    strLogFileName = strLogFilePath & "\" & userName & "-" & strDateTime & "-" & appName & ".txt"
     Set objLogFile = objFSO.CreateTextFile(strLogFileName, TRUE, FALSE)
     objLogFile.WriteLine(strEventInfo)
     objLogFile.Close
@@ -259,6 +277,6 @@ End Function
 'A function shut down the machine when triggered.
 Function killWorkstation()
   'oShell.Run "C:\Windows\System32\shutdown.exe /s /f /t 0", 0, FALSE
-  Msgbox "Uncomment the oShell.Run line in Rubber_Ducky_Defender.vbs to enable automatic shutdown upon detection!"
+  Msgbox "Uncomment the oShell.Run line in " & appName & ".vbs to enable automatic shutdown upon detection!", vbOKOnly, appName
 End Function
 '--------------------------------------------------

@@ -1,4 +1,18 @@
 --------------------
+COMMIT - 1/7/2019
+v1.2 - noGui argument now also turns off the confirmation box.
+
+-v1.2.
+-noGui argument now also disables the confirmation box.
+-To display the confirmation message, "noGui" has to be FALSE and 'warnOnThreat" has to be TRUE.
+-Fixed doumentation.
+-Added usage to documentation.
+-Renamed arguments to make them a little less ambigious.
+-Use appName variable instead of hard-coded strings where possible.
+-Improve code comments.
+--------------------
+
+--------------------
 COMMIT - 1/6/2019
 v1.1 - Switch from Devcon to shutdown.
 
