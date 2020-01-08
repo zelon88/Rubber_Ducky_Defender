@@ -1,5 +1,14 @@
 --------------------
 COMMIT - 1/7/2019
+v1.3 - Fix wrong object instance being used in killWorkstation().
+
+-v1.3.
+-Fix wrong object instance being used in killWorkstation().
+-Switch oShell.Run to objShell.run.
+--------------------
+
+--------------------
+COMMIT - 1/7/2019
 v1.2 - noGui argument now also turns off the confirmation box.
 
 -v1.2.

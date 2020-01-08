@@ -1,5 +1,5 @@
 'File Name: Rubber_Ducky_Defender.vbs
-'Version: v1.2, 1/7/2020
+'Version: v1.3, 1/8/2020
 'Author: Justin Grimes, 1/3/2020
 
 '-------------------------------------------------- 
@@ -276,7 +276,7 @@ End Function
 '--------------------------------------------------
 'A function shut down the machine when triggered.
 Function killWorkstation()
-  'oShell.Run "C:\Windows\System32\shutdown.exe /s /f /t 0", 0, FALSE
-  Msgbox "Uncomment the oShell.Run line in " & appName & ".vbs to enable automatic shutdown upon detection!", vbOKOnly, appName
+  'objShell.Run "C:\Windows\System32\shutdown.exe /s /f /t 0", 0, FALSE
+  Msgbox "Uncomment the objShell.Run line in " & appName & ".vbs to enable automatic shutdown upon detection!", vbOKOnly, appName
 End Function
 '--------------------------------------------------

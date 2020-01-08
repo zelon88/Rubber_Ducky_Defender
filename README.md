@@ -8,9 +8,9 @@ AUTHOR: Justin Grimes
 
 ORIGINAL VERSION DATE: 1/3/2020
 
-CURRENT VERSION DATE: 1/7/2020
+CURRENT VERSION DATE: 1/8/2020
 
-VERSION: v1.2
+VERSION: v1.3
 
 
 DESCRIPTION: An application to detect the use of "Bad USB" devices, such as a HAK5 "Rubber Ducky" payload deployment device.
